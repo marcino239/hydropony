@@ -20,27 +20,53 @@ void setup(){
     setup_vdd_tempr_sensor();
     Serial.begin(115200);
     pinMode(led,OUTPUT);
-    Serial.println("\r\nPrint Internal VCC Voltage");
+}
+
+float readVdd() {
+    return 1.20 * 4096.0 / adc_read(ADC1, 17);
+}
+
+float readCputemp( vdd ) {
+    // following 1.43 and 0.0043 parameters come from F103 datasheet - ch. 5.9.13
+    // and need to be calibrated for every chip (large fab parameters variance)
+    float tempr;
+    tempr = (1.43 - (vdd / 4096.0 * adc_read(ADC1, 16))) / 0.0043 + 25.0;
+
+    return tempr
+}
+
+float readAdc( inputPin ) {
+    return adc_read( ADC1, inputPin ) * 3.3 / 4096.0;
 }
 
 void loop() {
-    float tempr, vdd;
 
-    digitalWrite(led,LED_ON);
-    delay(50);
-    // reading Vdd by utilising the internal 1.20V VREF
-    vdd = 1.20 * 4096.0 / adc_read(ADC1, 17);
-    // following 1.43 and 0.0043 parameters come from F103 datasheet - ch. 5.9.13
-    // and need to be calibrated for every chip (large fab parameters variance)
-    tempr = (1.43 - (vdd / 4096.0 * adc_read(ADC1, 16))) / 0.0043 + 25.0;
-    Serial.print("Vdd=  ");
-    Serial.print(vdd);
-    Serial.println(" V");
-    Serial.print("Temp= ");
-    Serial.print(tempr);
-    Serial.println(" C");
+    digitalWrite( led, !digitalRead( led ) );
 
-    digitalWrite(led,LED_OFF);
-    delay(500);
+    char c = Serial.read();
+
+    if( c == 'm' ) {
+        float tempr, vdd, ph, temp, humidity;
+
+        vdd = readVdd();
+        tempr = readCputemp( vdd );
+        ph = readAdc( PIN_PH );
+        temp = readAdc( PIN_TEMP );
+        humidity = readAdc( PIN_TEMP );
+        
+        Serial.print( temp );
+        Serial.print( ',' );
+        Serial.print( humidity );
+        Serial.print( ',' );
+        Serial.print( ph );
+        Serial.print( ',' );
+        Serial.print( vdd );
+        Serial.print( ',' );
+        Serial.println( tempr );
+
+    } else {
+        Serial.print( "Unknown command: " );
+        Serial.println( c );
+    }
 }
 
